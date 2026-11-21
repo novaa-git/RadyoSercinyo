@@ -254,23 +254,7 @@
         // ==========================================
         const defaultCover = "kapak1.jpg";
 
-        const playlist = [
-            { 
-                title: "My lord of Rohan... it is on the verge of falling.", 
-                src: "muzik1.mp3",
-                cover: "kapak1.jpg"
-            },
-            { 
-                title: "I would have watched it until the very end, my king.", 
-                src: "muzik2.mp3",
-                cover: "kapak1.jpg"
-            },
-            { 
-                title: "A demon from the ancient world...", 
-                src: "muzik3.mp3",
-                cover: "kapak1.jpg"
-            }
-        ];
+        var playlist = [];
 
         const audio = document.getElementById('radioPlayer');
         const playBtn = document.getElementById('playBtn');
@@ -443,7 +427,36 @@
             }
         });
 
-        initRadio();
+
+        async function playlistGetir(dosyaUrl) {
+            try {
+                const yanit = await fetch(dosyaUrl);
+                
+                if (!yanit.ok) {
+                throw new Error(`Sunucu hatası: ${yanit.status}`);
+                }
+
+                // .txt dosyasının içindeki JSON verisini doğrudan diziye çevirir
+                const playlist = await yanit.json();
+                return playlist;
+
+            } catch (hata) {
+                console.error("Playlist yüklenemedi veya JSON formatı hatalı:", hata);
+                return [];
+            }
+        };
+
+        async function oynaticiyiBaslat() {
+            playlist = await playlistGetir('https://raw.githubusercontent.com/novaa-git/Mp3playlist/refs/heads/main/playlist.json');
+            console.log(playlist);
+            if (playlist.length > 0) {
+                initRadio();
+                console.log("Toplam şarkı:", playlist.length);
+                console.log("İlk şarkı adı:", playlist[0].title);
+            }
+        };
+        oynaticiyiBaslat();
+
     </script>
 </body>
 </html>
