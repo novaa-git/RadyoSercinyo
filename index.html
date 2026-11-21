@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radyo Sercinyo</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .radio-header {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: 2.5px;
+            
+            color: #ffffff;
+            margin-bottom: 18px;
+            text-align: center;
+            text-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
+        }
+
+        .radio-header span {
+            color: #ff4757;
+        }
+
+        .radio-container {
+            background-color: #1e1e1e;
+            padding: 22px 25px 25px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            margin-bottom: 15px;
+            min-height: 20px;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: #747d8c;
+            transition: color 0.3s ease;
+        }
+
+        .live-dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background-color: #747d8c;
+            transition: background-color 0.3s ease;
+        }
+
+        .live-indicator.active {
+            color: #ff4757;
+        }
+
+        .live-indicator.active .live-dot {
+            background-color: #ff4757;
+            animation: pulseDot 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulseDot {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0.4;
+            }
+        }
+
+        .cover-wrapper {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            border-radius: 14px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            background-color: #2f3542;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .cover-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: opacity 0.3s ease;
+        }
+
+        .marquee-wrapper {
+            width: 100%;
+            overflow: hidden;
+            white-space: nowrap;
+            margin-bottom: 25px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .marquee-wrapper.scrolling {
+            justify-content: flex-start;
+            mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+        }
+
+        .track-title {
+            font-size: 19px;
+            font-weight: 600;
+            color: #f1f2f6;
+            display: inline-block;
+        }
+
+        .marquee-wrapper.scrolling .track-title {
+            padding-left: 100%;
+            animation: scrollMarquee 13s linear infinite;
+        }
+
+        @keyframes scrollMarquee {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(-100%);
+            }
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 10px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s, background-color 0.2s;
+            background-color: #2f3542;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        button#playBtn {
+            background-color: #2ed573;
+            color: #121212;
+        }
+
+        button#stopBtn {
+            background-color: #ff4757;
+            color: #ffffff;
+        }
+
+        button.muted {
+            background-color: #ffa502;
+            color: #121212;
+        }
+    </style>
+</head>
+<body>
+
+    <h1 class="radio-header">Radyo <span>Sercinyo</span></h1>
+
+    <div class="radio-container">
+        <div class="top-bar">
+            <div class="live-indicator" id="liveIndicator">
+                <span class="live-dot"></span>
+                <span id="liveText">HAZIRLANIYOR</span>
+            </div>
+        </div>
+
+        <div class="cover-wrapper">
+            <img id="coverImage" src="varsayilan.jpg" alt="Radyo Kapak">
+        </div>
+
+        <div class="marquee-wrapper" id="marqueeWrapper">
+            <div class="track-title" id="trackName">Şarkı süreleri okunuyor...</div>
+        </div>
+        
+        <div class="controls">
+            <button id="playBtn" disabled aria-label="Oynat" title="Oynat">
+                <svg viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </button>
+
+            <button id="stopBtn" disabled aria-label="Durdur" title="Durdur">
+                <svg viewBox="0 0 24 24">
+                    <path d="M6 6h12v12H6z"/>
+                </svg>
+            </button>
+
+            <button id="muteBtn" aria-label="Sesi Kapat / Aç" title="Sesi Kapat / Aç">
+                <svg id="iconVolumeOn" viewBox="0 0 24 24">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+                </svg>
+                <svg id="iconVolumeOff" viewBox="0 0 24 24" style="display: none;">
+                    <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <audio id="radioPlayer" preload="auto"></audio>
+
+    <script>
+        // ==========================================
+        // SABİT ŞARKI VE KAPAK LİSTESİ
+        // ==========================================
+        const defaultCover = "kapak1.jpg";
+
+        const playlist = [
+            { 
+                title: "My lord of Rohan... it is on the verge of falling.", 
+                src: "muzik1.mp3",
+                cover: "kapak1.jpg"
+            },
+            { 
+                title: "I would have watched it until the very end, my king.", 
+                src: "muzik1.mp3",
+                cover: "kapak1.jpg"
+            },
+            { 
+                title: "A demon from the ancient world...", 
+                src: "muzik1.mp3",
+                cover: "kapak1.jpg"
+            }
+        ];
+
+        const audio = document.getElementById('radioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const muteBtn = document.getElementById('muteBtn');
+        const iconVolumeOn = document.getElementById('iconVolumeOn');
+        const iconVolumeOff = document.getElementById('iconVolumeOff');
+        const marqueeWrapper = document.getElementById('marqueeWrapper');
+        const trackNameEl = document.getElementById('trackName');
+        const liveIndicator = document.getElementById('liveIndicator');
+        const liveTextEl = document.getElementById('liveText');
+        const coverImageEl = document.getElementById('coverImage');
+
+        let isPlaying = false;
+        let syncTimer = null;
+        let totalPlaylistDuration = 0;
+
+        // Telefon Kilit Ekranı (Media Session API) Güncelleme Fonksiyonu
+        function updateMediaSession(track) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: track.title,
+                    artist: 'Radyo Sercinyo',
+                    album: 'Canlı Yayın',
+                    artwork: [
+                        { src: track.cover || defaultCover, sizes: '512x512', type: 'image/jpeg' }
+                    ]
+                });
+            }
+        }
+
+        // Kilit ekranı butonlarını (Oynat / Durdur) bağla
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('play', () => {
+                playBtn.click();
+            });
+            navigator.mediaSession.setActionHandler('pause', () => {
+                stopBtn.click();
+            });
+            navigator.mediaSession.setActionHandler('stop', () => {
+                stopBtn.click();
+            });
+        }
+
+        function getAudioDuration(track) {
+            return new Promise((resolve) => {
+                const tempAudio = new Audio();
+                tempAudio.preload = "metadata";
+                tempAudio.src = track.src;
+
+                tempAudio.onloadedmetadata = () => {
+                    track.duration = Math.floor(tempAudio.duration);
+                    resolve();
+                };
+
+                tempAudio.onerror = () => {
+                    console.warn("Süre okunamadı:", track.src);
+                    track.duration = 180; 
+                    resolve();
+                };
+            });
+        }
+
+        async function initRadio() {
+            await Promise.all(playlist.map(track => getAudioDuration(track)));
+            totalPlaylistDuration = playlist.reduce((total, track) => total + track.duration, 0);
+
+            liveTextEl.textContent = "HAZIR";
+            trackNameEl.textContent = "Dinlemek için Oynat'a basın";
+            playBtn.disabled = false;
+            stopBtn.disabled = false;
+        }
+
+        function getCurrentRadioState() {
+            const nowInSeconds = Math.floor(Date.now() / 1000);
+            let currentLoopPosition = nowInSeconds % totalPlaylistDuration;
+
+            for (let i = 0; i < playlist.length; i++) {
+                if (currentLoopPosition < playlist[i].duration) {
+                    return {
+                        trackIndex: i,
+                        seekTime: currentLoopPosition
+                    };
+                }
+                currentLoopPosition -= playlist[i].duration;
+            }
+            return { trackIndex: 0, seekTime: 0 };
+        }
+
+        function startMarquee(text) {
+            marqueeWrapper.classList.remove('scrolling');
+            trackNameEl.textContent = text;
+            void trackNameEl.offsetWidth;
+            marqueeWrapper.classList.add('scrolling');
+        }
+
+        function stopMarquee(text) {
+            marqueeWrapper.classList.remove('scrolling');
+            trackNameEl.textContent = text;
+        }
+
+        function syncAndPlay() {
+            const state = getCurrentRadioState();
+            const currentTrack = playlist[state.trackIndex];
+
+            startMarquee(currentTrack.title);
+            liveIndicator.classList.add('active');
+            liveTextEl.textContent = "LIVE";
+
+            if (currentTrack.cover && !coverImageEl.src.endsWith(currentTrack.cover)) {
+                coverImageEl.src = currentTrack.cover;
+            }
+
+            if (!audio.src.endsWith(currentTrack.src)) {
+                audio.src = currentTrack.src;
+            }
+
+            audio.currentTime = state.seekTime;
+            audio.play().then(() => {
+                updateMediaSession(currentTrack);
+                if ('mediaSession' in navigator) {
+                    navigator.mediaSession.playbackState = 'playing';
+                }
+            }).catch(err => {
+                console.log("Oynatma için kullanıcı tıklaması bekleniyor.");
+            });
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) return;
+            isPlaying = true;
+            syncAndPlay();
+
+            syncTimer = setInterval(() => {
+                if (!isPlaying) return;
+                const state = getCurrentRadioState();
+                const expectedTrack = playlist[state.trackIndex];
+
+                if (!audio.src.endsWith(expectedTrack.src)) {
+                    syncAndPlay();
+                }
+            }, 1000);
+        });
+
+        stopBtn.addEventListener('click', () => {
+            isPlaying = false;
+            clearInterval(syncTimer);
+            audio.pause();
+            audio.src = "";
+            stopMarquee("Yayın durduruldu");
+            liveIndicator.classList.remove('active');
+            liveTextEl.textContent = "OFFLINE";
+            coverImageEl.src = defaultCover;
+
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.playbackState = 'paused';
+            }
+        });
+
+        muteBtn.addEventListener('click', () => {
+            audio.muted = !audio.muted;
+            if (audio.muted) {
+                iconVolumeOn.style.display = "none";
+                iconVolumeOff.style.display = "block";
+                muteBtn.classList.add('muted');
+            } else {
+                iconVolumeOn.style.display = "block";
+                iconVolumeOff.style.display = "none";
+                muteBtn.classList.remove('muted');
+            }
+        });
+
+        initRadio();
+    </script>
+</body>
+</html>
