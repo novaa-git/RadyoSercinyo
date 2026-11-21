@@ -26,7 +26,7 @@
         .radio-header {
             font-size: 24px;
             font-weight: 800;
-            letter-spacing: 2.5px;
+            letter-spacing: 8.5px;
             
             color: #ffffff;
             margin-bottom: 18px;
@@ -139,7 +139,7 @@
 
         .marquee-wrapper.scrolling .track-title {
             padding-left: 100%;
-            animation: scrollMarquee 13s linear infinite;
+            animation: scrollMarquee 30s linear infinite;
         }
 
         @keyframes scrollMarquee {
@@ -169,11 +169,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            box-shadow: rgba(0, 0, 0, 0.15) 1.95px 1.95px 2.6px;
         }
 
         button svg {
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
             fill: currentColor;
         }
 
@@ -188,11 +189,13 @@
 
         button#playBtn {
             background-color: #2ed573;
-            color: #121212;
+            background-image: linear-gradient(to right, #02AAB0 0%, #00CDAC 51%, #02AAB0 100%);
+            color: #483757;
         }
 
         button#stopBtn {
             background-color: #ff4757;
+            background-image: linear-gradient(to right, #D31027 0%, #EA384D 51%, #D31027 100%);
             color: #ffffff;
         }
 
@@ -322,8 +325,8 @@
             await Promise.all(playlist.map(track => getAudioDuration(track)));
             totalPlaylistDuration = playlist.reduce((total, track) => total + track.duration, 0);
 
-            liveTextEl.textContent = "HAZIR";
-            trackNameEl.textContent = "Dinlemek için Oynat'a basın";
+            liveTextEl.textContent = "Ready";
+            trackNameEl.textContent = "";
             playBtn.disabled = false;
             stopBtn.disabled = false;
         }
@@ -362,7 +365,7 @@
 
             startMarquee(currentTrack.title);
             liveIndicator.classList.add('active');
-            liveTextEl.textContent = "LIVE";
+            liveTextEl.textContent = "Live";
 
             if (currentTrack.cover && !coverImageEl.src.endsWith(currentTrack.cover)) {
                 coverImageEl.src = currentTrack.cover;
@@ -404,9 +407,9 @@
             clearInterval(syncTimer);
             audio.pause();
             audio.src = "";
-            stopMarquee("Yayın durduruldu");
+            stopMarquee("");//yayin durduruldu
             liveIndicator.classList.remove('active');
-            liveTextEl.textContent = "OFFLINE";
+            liveTextEl.textContent = "Offline";
             coverImageEl.src = defaultCover;
 
             if ('mediaSession' in navigator) {
