@@ -430,6 +430,13 @@
             }
         });
 
+        function listeyiKaristir(dizi) {
+            for (let i = dizi.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                    [dizi[i], dizi[j]] = [dizi[j], dizi[i]];
+            }
+            return dizi;
+        }
 
         async function playlistGetir(dosyaUrl) {
             try {
@@ -453,6 +460,7 @@
             playlist = await playlistGetir('https://raw.githubusercontent.com/novaa-git/Mp3playlist/refs/heads/main/playlist.json');
             console.log(playlist);
             if (playlist.length > 0) {
+                playlist = listeyiKaristir(playlist);
                 initRadio();
                 console.log("Toplam şarkı:", playlist.length);
                 console.log("İlk şarkı adı:", playlist[0].title);
