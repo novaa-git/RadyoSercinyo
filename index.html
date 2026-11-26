@@ -27,7 +27,6 @@
             font-size: 24px;
             font-weight: 800;
             letter-spacing: 8.5px;
-            
             color: #ffffff;
             margin-bottom: 18px;
             text-align: center;
@@ -222,7 +221,7 @@
         </div>
 
         <div class="marquee-wrapper" id="marqueeWrapper">
-            <div class="track-title" id="trackName">Şarkı süreleri okunuyor...</div>
+            <div class="track-title" id="trackName">Liste yükleniyor...</div>
         </div>
         
         <div class="controls">
@@ -252,12 +251,11 @@
     <audio id="radioPlayer" preload="auto"></audio>
 
     <script>
-        // ==========================================
-        // SABİT ŞARKI VE KAPAK LİSTESİ
-        // ==========================================
-        const defaultCover = "kapak1.jpg";
+        const defaultCover = "https://raw.githubusercontent.com/novaa-git/RadyoSercinyo/refs/heads/main/varsayilan.jpg";
 
-        var playlist = [];
+        let originalPlaylist = [];
+        let shuffledQueue = [];
+        let currentIndex = 0;
 
         const audio = document.getElementById('radioPlayer');
         const playBtn = document.getElementById('playBtn');
@@ -272,16 +270,27 @@
         const coverImageEl = document.getElementById('coverImage');
 
         let isPlaying = false;
-        let syncTimer = null;
-        let totalPlaylistDuration = 0;
 
-        // Telefon Kilit Ekranı (Media Session API) Güncelleme Fonksiyonu
+        function listeyiKaristir(dizi, sonCalanSarki = null) {
+            const kopya = [...dizi];
+            for (let i = kopya.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [kopya[i], kopya[j]] = [kopya[j], kopya[i]];
+            }
+            // Yeni tur başladığında bir önceki turun son şarkısıyla aynı şarkının art arda gelmesini önle
+            if (sonCalanSarki && kopya.length > 1 && kopya[0].src === sonCalanSarki.src) {
+                const rastgeleIndex = Math.floor(Math.random() * (kopya.length - 1)) + 1;
+                [kopya[0], kopya[rastgeleIndex]] = [kopya[rastgeleIndex], kopya[0]];
+            }
+            return kopya;
+        }
+
         function updateMediaSession(track) {
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
                     title: track.title,
                     artist: 'Radyo Sercinyo',
-                    album: 'Canlı Yayın',
+                    album: 'Rastgele Yayın',
                     artwork: [
                         { src: track.cover || defaultCover, sizes: '512x512', type: 'image/jpeg' }
                     ]
@@ -289,62 +298,11 @@
             }
         }
 
-        // Kilit ekranı butonlarını (Oynat / Durdur) bağla
         if ('mediaSession' in navigator) {
-            navigator.mediaSession.setActionHandler('play', () => {
-                playBtn.click();
-            });
-            navigator.mediaSession.setActionHandler('pause', () => {
-                stopBtn.click();
-            });
-            navigator.mediaSession.setActionHandler('stop', () => {
-                stopBtn.click();
-            });
-        }
-
-        function getAudioDuration(track) {
-            return new Promise((resolve) => {
-                const tempAudio = new Audio();
-                tempAudio.preload = "metadata";
-                tempAudio.src = track.src;
-
-                tempAudio.onloadedmetadata = () => {
-                    track.duration = Math.floor(tempAudio.duration);
-                    resolve();
-                };
-
-                tempAudio.onerror = () => {
-                    console.warn("Süre okunamadı:", track.src);
-                    track.duration = 180; 
-                    resolve();
-                };
-            });
-        }
-
-        async function initRadio() {
-            await Promise.all(playlist.map(track => getAudioDuration(track)));
-            totalPlaylistDuration = playlist.reduce((total, track) => total + track.duration, 0);
-
-            liveTextEl.textContent = "Ready";
-            trackNameEl.textContent = "";
-            playBtn.disabled = false;
-            stopBtn.disabled = false;
-        }
-
-        function getCurrentRadioState() {
-            const nowInSeconds = Math.floor(Date.now() / 1000);
-            let currentLoopPosition = nowInSeconds % totalPlaylistDuration;
-
-            for (let i = 0; i < playlist.length; i++) {
-                if (currentLoopPosition < playlist[i].duration) {
-                    return {
-                        trackIndex: i,
-                        seekTime: currentLoopPosition
-                    };
-                }
-                currentLoopPosition -= playlist[i].duration;
-            }
-            return { trackIndex: 0, seekTime: 0 };
+            navigator.mediaSession.setActionHandler('play', () => playBtn.click());
+            navigator.mediaSession.setActionHandler('pause', () => stopBtn.click());
+            navigator.mediaSession.setActionHandler('stop', () => stopBtn.click());
+            navigator.mediaSession.setActionHandler('nexttrack', () => siradakiSarkiyiCal());
         }
 
         function startMarquee(text) {
@@ -359,58 +317,74 @@
             trackNameEl.textContent = text;
         }
 
-        function syncAndPlay() {
-            const state = getCurrentRadioState();
-            const currentTrack = playlist[state.trackIndex];
+        function sarkiyiOynat(index) {
+            if (shuffledQueue.length === 0) return;
 
+            const currentTrack = shuffledQueue[index];
             startMarquee(currentTrack.title);
             liveIndicator.classList.add('active');
             liveTextEl.textContent = "Live";
 
-            if (currentTrack.cover && !coverImageEl.src.endsWith(currentTrack.cover)) {
-                coverImageEl.src = currentTrack.cover;
-            }
+            coverImageEl.src = currentTrack.cover || defaultCover;
+            audio.src = currentTrack.src;
 
-            if (!audio.src.endsWith(currentTrack.src)) {
-                audio.src = currentTrack.src;
-            }
-
-            audio.currentTime = state.seekTime;
             audio.play().then(() => {
                 updateMediaSession(currentTrack);
                 if ('mediaSession' in navigator) {
                     navigator.mediaSession.playbackState = 'playing';
                 }
             }).catch(err => {
-                console.log("Oynatma için kullanıcı tıklaması bekleniyor.");
+                console.log("Oynatma başlatılamadı veya kullanıcı etkileşimi bekleniyor:", err);
             });
         }
 
+        function siradakiSarkiyiCal() {
+            const sonSarki = shuffledQueue[currentIndex];
+            currentIndex++;
+
+            // Tüm liste bittiğinde yeni bir tekrarsız karıştırma turu başlat
+            if (currentIndex >= shuffledQueue.length) {
+                shuffledQueue = listeyiKaristir(originalPlaylist, sonSarki);
+                currentIndex = 0;
+            }
+
+            if (isPlaying) {
+                sarkiyiOynat(currentIndex);
+            }
+        }
+
+        // Şarkı bittiğinde otomatik olarak sıradaki rastgele şarkıya geç
+        audio.addEventListener('ended', () => {
+            siradakiSarkiyiCal();
+        });
+
+        // Oynatma hatası olursa (bozuk link vb.) takılmadan sıradakine geç
+        audio.addEventListener('error', () => {
+            console.warn("Şarkı yüklenemedi, sıradakine geçiliyor:", audio.src);
+            if (isPlaying) {
+                siradakiSarkiyiCal();
+            }
+        });
+
         playBtn.addEventListener('click', () => {
-            if (isPlaying) return;
+            if (isPlaying || shuffledQueue.length === 0) return;
             isPlaying = true;
-            syncAndPlay();
-
-            syncTimer = setInterval(() => {
-                if (!isPlaying) return;
-                const state = getCurrentRadioState();
-                const expectedTrack = playlist[state.trackIndex];
-
-                if (!audio.src.endsWith(expectedTrack.src)) {
-                    syncAndPlay();
-                }
-            }, 1000);
+            sarkiyiOynat(currentIndex);
         });
 
         stopBtn.addEventListener('click', () => {
             isPlaying = false;
-            clearInterval(syncTimer);
             audio.pause();
             audio.src = "";
-            stopMarquee("");//yayin durduruldu
+            stopMarquee("");
             liveIndicator.classList.remove('active');
             liveTextEl.textContent = "Offline";
             coverImageEl.src = defaultCover;
+
+            // Durdurulduğunda bir sonraki başlatma için listeyi tazele
+            const mevcutSarki = shuffledQueue[currentIndex];
+            shuffledQueue = listeyiKaristir(originalPlaylist, mevcutSarki);
+            currentIndex = 0;
 
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.playbackState = 'paused';
@@ -430,44 +404,35 @@
             }
         });
 
-        function listeyiKaristir(dizi) {
-            for (let i = dizi.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                    [dizi[i], dizi[j]] = [dizi[j], dizi[i]];
-            }
-            return dizi;
-        }
-
         async function playlistGetir(dosyaUrl) {
             try {
                 const yanit = await fetch(dosyaUrl);
-                
                 if (!yanit.ok) {
-                throw new Error(`Sunucu hatası: ${yanit.status}`);
+                    throw new Error(`Sunucu hatası: ${yanit.status}`);
                 }
-
-                // .txt dosyasının içindeki JSON verisini doğrudan diziye çevirir
-                const playlist = await yanit.json();
-                return playlist;
-
+                return await yanit.json();
             } catch (hata) {
                 console.error("Playlist yüklenemedi veya JSON formatı hatalı:", hata);
                 return [];
             }
-        };
+        }
 
         async function oynaticiyiBaslat() {
-            playlist = await playlistGetir('https://raw.githubusercontent.com/novaa-git/Mp3playlist/refs/heads/main/playlist.json');
-            console.log(playlist);
-            if (playlist.length > 0) {
-                playlist = listeyiKaristir(playlist);
-                initRadio();
-                console.log("Toplam şarkı:", playlist.length);
-                console.log("İlk şarkı adı:", playlist[0].title);
+            originalPlaylist = await playlistGetir('https://raw.githubusercontent.com/novaa-git/Mp3playlist/refs/heads/main/playlist.json');
+            if (originalPlaylist.length > 0) {
+                shuffledQueue = listeyiKaristir(originalPlaylist);
+                currentIndex = 0;
+                liveTextEl.textContent = "Ready";
+                trackNameEl.textContent = "";
+                playBtn.disabled = false;
+                stopBtn.disabled = false;
+            } else {
+                liveTextEl.textContent = "Error";
+                trackNameEl.textContent = "Liste yüklenemedi";
             }
-        };
-        oynaticiyiBaslat();
+        }
 
+        oynaticiyiBaslat();
     </script>
 </body>
 </html>
